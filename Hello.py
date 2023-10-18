@@ -86,8 +86,9 @@ def create_traces(gpx_files):
 
     for f in gpx_files:
         fn = f.name
-        with open(fn) as gpxf:
-            gpx = gpxpy.parse(gpxf)       
+        # with open(fn) as gpxf:
+            # gpx = gpxpy.parse(gpxf)      
+        gpx = gpxpy.parse(f) 
         [d, e0] = get_elevation(gpx)
         traces.append({
             "isShown": st.checkbox(f.name, True),
