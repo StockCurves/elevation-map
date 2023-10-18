@@ -15,24 +15,15 @@
 import streamlit as st
 from streamlit.logger import get_logger
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import gpxpy
-import geopy
+# import geopy
 
-import matplotlib.font_manager as mpfm
-import matplotlib.pyplot as plt
-from matplotlib import rcParams
-# Set Font
+import pandas as pd
+import numpy as np
+import plotly.graph_objs as go
+import plotly.express as px
 
-
-# mpfm.addfont('./font/SimHei.ttf')
-# plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei'] 
-# mpfm.fontManager.addfont('./font/NotoSansTC-Regular.ttf')
-# mpfm.fontManager.addfont('./font/Microsoft-JhengHei.ttf')
-# plt.rcParams['font.sans-serif'] = ['NotoSansTC-Regular', 'Microsoft-JhengHei'] 
-# plt.rcParams['axes.unicode_minus'] = False
-# rcParams["font.size"]= 20
-# matplotlib.rc('font', family='SimHei')
 
 LOGGER = get_logger(__name__)
 
@@ -69,93 +60,59 @@ def get_elevation(gpx):
         dis_eucl.append( math.sqrt(dis**2 + (yk_ele0[i]/1000 - yk_ele0[i-1]/1000)**2) )
 
     # cumulated sum    
+    points = []
     for i, d in enumerate(dis_flat):    
         s += dis_flat[i]
         s1 += dis_eucl[i]
         dis_sum_flat.append(s)
         dis_sum_eucl.append(s1)
+        points.append(
+            {
+                "d": s,
+                "e": yk_ele0[i]
+            }
+        )
 
     return [dis_sum_flat, yk_ele0[1:]]
+    # return points
+
+def get_gpx_files():
+    uploaded_files = [] # '桶後越嶺步道.gpx'
+    gpx_files = st.file_uploader("請上傳多個.gpx檔", type=["gpx"], accept_multiple_files=True)
+    return gpx_files
+
+def create_traces(gpx_files):
+    traces = []
+
+    for f in gpx_files:
+        fn = f.name
+        with open(fn) as gpxf:
+            gpx = gpxpy.parse(gpxf)       
+        [d, e0] = get_elevation(gpx)
+        traces.append({
+            "isShown": st.checkbox(f.name, True),
+            "trace": go.Scatter(x=d, y=e0, mode='lines', name=fn.split('.')[0])
+        })
+    return traces
+
+def create_map(traces):
+    new_traces = [x["trace"] for x in traces if x['isShown']]
+    layout = go.Layout(title='海拔地圖', xaxis=dict(title='距離[KM]'), yaxis=dict(title='高度[M]'))
+
+    fig = go.Figure(data=new_traces, layout=layout)
+    st.plotly_chart(fig, use_container_width=True)
 
 def run():
     st.set_page_config(
         page_title="Hello",
         page_icon="👋",
     )
-
     st.write("# Welcome to Streamlit! 👋")
-    # st.sidebar.success("Select a demo above.")
-    st.markdown(
-        """
-          test
-        """
-    )
-    # st.markdown(
-    #     """
-    #     <style>
-    #     @font-face {
-    #       font-family: 'Tangerine';
-    #       font-style: normal;
-    #       font-weight: 12;
-    #       src: url(https://fonts.gstatic.com/s/tangerine/v12/IurY6Y5j_oScZZow4VOxCZZM.woff2) format('woff2');
-    #       unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-    #     }
-    #         html, body, [class*="css"]  {
-    #         font-family: 'Tangerine';
-    #         font-size: 48px;
-    #         }
-    #         </style>
-    #         """,
-    #             unsafe_allow_html=True,
-    # )
 
-
-    # Create a list to store uploaded files
-    uploaded_files = []
-    uploaded_files = st.file_uploader("Upload files", type=["gpx"], accept_multiple_files=True)
-
-    # Display uploaded files and provide a delete option
-    if uploaded_files:
-        st.header("Uploaded Files:")
-        for file in uploaded_files:
-            file_name = file.name
-            # Display file name
-            st.write(file_name)
-            # Create a button to delete the file
-            if st.button(f"Delete {file_name}"):
-                uploaded_files.remove(file)
-                st.success(f"{file_name} has been deleted.")
-                # Optional: You can also delete the file from the server if needed.
-                # os.remove(file_name)
-
-    # Display the uploaded files
-
-    st.subheader("Maps of the Elvation:")
-    fig, d1 = plt.subplots(1,1)
-    fig.set_figheight(12)
-    fig.set_figwidth(15)
-
-    for fn in uploaded_files:
-        # st.write(fn.name)
-        fn = fn.name
-        with open(fn) as f:
-            gpx = gpxpy.parse(f)       
-        [d, e0] = get_elevation(gpx)
-        d1.plot(d, e0, lw=5, label = fn.split('.')[0])    
-        #d1.plot(d, e1, lw=1, color='k', ls = ':' )   
-
-    d1.set_xlabel("距離 (KM)")
-    d1.set_ylabel("海跋 (M)")
-    # d1.legend(prop='PingFang HK');
-    d1.legend();
-    d1.grid()        
-
-    st.pyplot(fig)        
-
-
-        
-
-
+    gpx_files = get_gpx_files()
+    traces = create_traces(gpx_files)
+    create_map(traces)
+    
 if __name__ == "__main__":
     run()
 

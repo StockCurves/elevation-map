@@ -6,3 +6,4 @@ streamlit
 geopy
 gpxpy
 matplotlib
+plotly
